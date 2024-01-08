@@ -9,9 +9,13 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float jumpSpeed = 20f;
 
     Vector2 moveInput;
+
     Rigidbody2D myRigidbody;
-    Animator myAnimator;
+    RigidbodyConstraints2D originalConstraints;
+
     BoxCollider2D myCollider;
+
+    Animator myAnimator;
 
     bool isLanding = false;
     bool isFalling = false;
@@ -19,15 +23,21 @@ public class PlayerMovement : MonoBehaviour
     void Start()
     {
         myRigidbody = GetComponent<Rigidbody2D>();
-        myAnimator = GetComponent<Animator>();
+        originalConstraints = myRigidbody.constraints;
         myCollider = GetComponent<BoxCollider2D>();
+        myAnimator = GetComponent<Animator>();
     }
 
     void Update()
     {
+        Falling();
+    }
+
+    void FixedUpdate()
+    {
         Run();
         FlipSprite();
-        Falling();
+        Landing();
     }
 
     void OnMove(InputValue value)
@@ -35,10 +45,20 @@ public class PlayerMovement : MonoBehaviour
         moveInput = value.Get<Vector2>();
     }
 
+    void Landing()
+    {
+        if(isLanding)
+        {
+            myRigidbody.constraints = RigidbodyConstraints2D.FreezePositionX;
+        }
+        else
+        {
+            myRigidbody.constraints = originalConstraints;
+        }
+    }
+
     void Run()
     {
-        if(isLanding) { return;}
-
         Vector2 playerVelocity = new Vector2 (moveInput.x * moveSpeed, myRigidbody.velocity.y);
         myRigidbody.velocity = playerVelocity;
 
@@ -93,7 +113,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if(myCollider.IsTouchingLayers(LayerMask.GetMask("Ground")))
         {
-            StartCoroutine(SlowWhileLanding(0.12f));
+            StartCoroutine(SlowWhileLanding(0.25f));
         }
     }
 

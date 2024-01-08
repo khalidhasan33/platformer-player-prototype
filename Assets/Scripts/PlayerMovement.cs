@@ -19,6 +19,12 @@ public class PlayerMovement : MonoBehaviour
 
     bool isLanding = false;
     bool isFalling = false;
+    bool isOnGround = true;
+
+    // Physics Jump
+    float gravity = 1f;
+    float fallMultiplier = 7.5f;
+    float linearDrag = 4f;
 
     void Start()
     {
@@ -30,14 +36,28 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        Falling();
+    	OnGround();
+    	ModifyPhysics();
     }
 
     void FixedUpdate()
     {
         Run();
         FlipSprite();
+        Falling();
         Landing();
+    }
+
+    void OnGround()
+    {
+		if(myCollider.IsTouchingLayers(LayerMask.GetMask("Ground")))
+		{
+			isOnGround = true;
+		}
+		else
+		{
+			isOnGround = false;
+		}
     }
 
     void OnMove(InputValue value)
@@ -78,42 +98,60 @@ public class PlayerMovement : MonoBehaviour
 
     void OnJump(InputValue value)
     {
-        if(!myCollider.IsTouchingLayers(LayerMask.GetMask("Ground"))) { return;}
-
-        if(value.isPressed)
+        if(value.isPressed && isOnGround && !isLanding)
         {
-            myRigidbody.velocity += new Vector2 (0f, jumpSpeed);
+            myRigidbody.velocity = new Vector2 (myRigidbody.velocity.x, 0f);
+            myRigidbody.AddForce(Vector2.up * jumpSpeed, ForceMode2D.Impulse);
             myAnimator.SetTrigger("jump");
         }
     }
 
     void OnCollisionEnter2D(Collision2D other)
     {
-        if(myCollider.IsTouchingLayers(LayerMask.GetMask("Ground")))
+        if(!isOnGround)
         {
             isLanding = true;
             myAnimator.SetBool("isLanding", isLanding);
         }
     }
 
+    void ModifyPhysics()
+    {
+    	if(isOnGround)
+    	{
+    		myRigidbody.gravityScale = 0f;
+    		myRigidbody.drag = 0f;
+    	}
+    	else
+    	{
+    		myRigidbody.gravityScale = gravity;
+    		myRigidbody.drag = linearDrag;
+
+    		if(myRigidbody.velocity.y < 0)
+    		{
+    			myRigidbody.gravityScale = gravity * fallMultiplier;
+    		}
+    	}
+    }
+
     void Falling()
     {
-        if(!myCollider.IsTouchingLayers(LayerMask.GetMask("Ground")))
+        if(!isOnGround && myRigidbody.velocity.y < 0)
         {
             isFalling = true;
         }
         else
         {
-            isFalling = false;
+        	isFalling = false;
         }
         myAnimator.SetBool("isFalling", isFalling);
     }
 
     void OnCollisionStay2D(Collision2D other)
     {
-        if(myCollider.IsTouchingLayers(LayerMask.GetMask("Ground")))
+        if(isOnGround)
         {
-            StartCoroutine(SlowWhileLanding(0.25f));
+            StartCoroutine(SlowWhileLanding(0.05f));
         }
     }
 

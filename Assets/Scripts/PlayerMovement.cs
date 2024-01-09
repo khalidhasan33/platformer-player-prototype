@@ -15,6 +15,8 @@ public class PlayerMovement : MonoBehaviour
 
     BoxCollider2D myCollider;
 
+    PlayerInput playerInput;
+
     Animator myAnimator;
 
     bool isLanding = false;
@@ -31,6 +33,7 @@ public class PlayerMovement : MonoBehaviour
         myRigidbody = GetComponent<Rigidbody2D>();
         originalConstraints = myRigidbody.constraints;
         myCollider = GetComponent<BoxCollider2D>();
+        playerInput = GetComponent<PlayerInput>();
         myAnimator = GetComponent<Animator>();
     }
 
@@ -89,10 +92,18 @@ public class PlayerMovement : MonoBehaviour
     void FlipSprite()
     {
         bool playerHasHorizontalSpeed = Mathf.Abs(myRigidbody.velocity.x) > Mathf.Epsilon;
+        float facing = Mathf.Sign(myRigidbody.velocity.x);
 
         if(playerHasHorizontalSpeed)
         {
-            transform.localScale = new Vector2 (Mathf.Sign(myRigidbody.velocity.x), 1f);      
+            if(facing == 1f)
+            {
+                transform.rotation = Quaternion.Euler(0, 0, 0);
+            }
+            else
+            {
+                transform.rotation = Quaternion.Euler(0, 180f, 0);
+            }
         }
     }
 
@@ -103,6 +114,7 @@ public class PlayerMovement : MonoBehaviour
             myRigidbody.velocity = new Vector2 (myRigidbody.velocity.x, 0f);
             myRigidbody.AddForce(Vector2.up * jumpSpeed, ForceMode2D.Impulse);
             myAnimator.SetTrigger("jump");
+            StartCoroutine(JumpSqueeze(1.25f, 0.8f, 0.05f));
         }
     }
 
@@ -131,6 +143,10 @@ public class PlayerMovement : MonoBehaviour
     		{
     			myRigidbody.gravityScale = gravity * fallMultiplier;
     		}
+            else if(myRigidbody.velocity.y > 0 && !playerInput.actions["jump"].IsPressed())
+            {
+                myRigidbody.gravityScale = gravity * (fallMultiplier * 1.7f);
+            }
     	}
     }
 
@@ -149,16 +165,32 @@ public class PlayerMovement : MonoBehaviour
 
     void OnCollisionStay2D(Collision2D other)
     {
-        if(isOnGround)
+        if(isOnGround && isLanding)
         {
-            StartCoroutine(SlowWhileLanding(0.05f));
+            isLanding = false;
+            myAnimator.SetBool("isLanding", isLanding);
         }
     }
 
-    IEnumerator SlowWhileLanding(float delay) {
-        yield return new WaitForSeconds(delay);
-        isLanding = false;
-        myAnimator.SetBool("isLanding", isLanding);
+    IEnumerator JumpSqueeze(float xSqueeze, float ySqueeze, float seconds)
+    {
+        Debug.Log("Squeeze");
+        Vector3 originalSize = Vector3.one;
+        Vector3 newSize = new Vector3(xSqueeze, ySqueeze, originalSize.z);
+        float t = 0f;
+        while (t <= 1.5)
+        {
+            t += Time.deltaTime / seconds;
+            myRigidbody.transform.localScale = Vector3.Lerp(originalSize, newSize, t);
+            yield return null;
+        }
+        t = 0f;
+        while (t <= 1.5)
+        {
+            t += Time.deltaTime / seconds;
+            myRigidbody.transform.localScale = Vector3.Lerp(newSize, originalSize, t);
+            yield return null;
+        }
     }
 
 }
